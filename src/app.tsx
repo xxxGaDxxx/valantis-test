@@ -131,16 +131,24 @@ export const App: React.FC = () => {
       setLoading(false)
       console.error('Ошибка при загрузке id товаров:', errorProductsId?.data)
       refetch()
+      setTimeout(() => {
+        refetch()
+      }, 1000)
     }
     if (errorProducts && 'status' in errorProducts && errorProducts?.status) {
       setLoading(false)
       console.error('Ошибка при загрузке товаров:', errorProducts?.data)
-      fetchProductsData()
+
+      setTimeout(() => {
+        fetchProductsData()
+      }, 1000)
     }
     if (errorFilterProducts && 'status' in errorFilterProducts && errorFilterProducts?.status) {
       setLoading(false)
       console.error('Ошибка при загрузке отфильтрованного товара:', errorFilterProducts?.data)
-      fetchProductsData()
+      setTimeout(() => {
+        fetchProductsData()
+      }, 1000)
     }
   }, [errorProductsId, errorProducts, errorFilterProducts])
 
