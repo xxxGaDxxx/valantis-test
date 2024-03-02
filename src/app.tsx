@@ -2,15 +2,27 @@ import React, { useEffect, useState } from 'react'
 
 import styles from './app.module.scss'
 
+import { FiltersInputs } from './components/filters-inputs/filters-inputs'
 import { Pagination } from './components/pagination/pagination'
 import { ProductTable } from './components/product-table/product-table'
-import { ProductType, useGetProductsIdQuery, useGetProductsMutation } from './services/products'
+import {
+  ProductType,
+  useFilterProductsMutation,
+  useGetProductsIdQuery,
+  useGetProductsMutation,
+} from './services/products'
 import { DEFAULT_LIMIT_AND_OFFSET, PAGE_DEFAULT } from './utils/constants'
 import { filterUniqueById } from './utils/filterUniqueById'
+import { productsIdOffsetFilter } from './utils/productsIdFilter'
 
 export const App: React.FC = () => {
-  const [products, setProducts] = useState<ProductType[]>([])
   const [loading, setLoading] = useState(false)
+
+  const [products, setProducts] = useState<ProductType[]>([])
+  const [productsIdFilter, setProductsIdFilter] = useState<string[]>([])
+
+  const [isSearchProduct, setIsSearchProduct] = useState(false)
+
   const [page, setPage] = useState(PAGE_DEFAULT)
 
   const {
@@ -18,23 +30,84 @@ export const App: React.FC = () => {
     error: errorProductsId,
     isLoading,
     refetch,
-  } = useGetProductsIdQuery({
-    limit: DEFAULT_LIMIT_AND_OFFSET,
-    offset: (page - PAGE_DEFAULT) * DEFAULT_LIMIT_AND_OFFSET || 0,
-  })
+  } = useGetProductsIdQuery(
+    {
+      limit: DEFAULT_LIMIT_AND_OFFSET,
+      offset: (page - PAGE_DEFAULT) * DEFAULT_LIMIT_AND_OFFSET || 0,
+    },
+    { skip: isSearchProduct }
+  )
 
   const [getProducts, { error: errorProducts }] = useGetProductsMutation()
+  const [filterProducts, { error: errorFilterProducts }] = useFilterProductsMutation()
 
   const fetchProductsData = async () => {
-    if (productsIdResult && 'result' in productsIdResult) {
-      const productsData = await getProducts(productsIdResult.result)
+    setLoading(false)
+
+    if (!productsIdResult?.result && !productsIdFilter) {
+      setLoading(true)
+
+      return
+    }
+
+    const uniqueIds = new Set<string>()
+
+    if (isSearchProduct) {
+      if (productsIdFilter.length) {
+        const productsFilterPage = productsIdOffsetFilter(page, productsIdFilter)
+
+        productsFilterPage.forEach((id: string) => uniqueIds.add(id))
+      }
+    }
+
+    if (productsIdResult && 'result' in productsIdResult && !isSearchProduct) {
+      productsIdResult.result.forEach((id: string) => uniqueIds.add(id))
+    }
+
+    if (uniqueIds.size) {
+      const productsData = await getProducts(Array.from(uniqueIds))
 
       if (productsData && 'data' in productsData) {
         setProducts(filterUniqueById(productsData.data.result))
       }
-
-      setLoading(true)
     }
+
+    setLoading(true)
+  }
+
+  const handleSearch = async (field: string, value: number | string) => {
+    setLoading(false)
+    setPage(PAGE_DEFAULT)
+    const filterProductsIdData = await filterProducts({ [field]: value })
+
+    if ('error' in filterProductsIdData && filterProductsIdData.error) {
+      setTimeout(() => {
+        handleSearch(field, value)
+      }, 1000)
+
+      return
+    }
+
+    if ('data' in filterProductsIdData) {
+      if (!filterProductsIdData?.data?.result.length) {
+        setProducts([])
+        setProductsIdFilter([])
+        if (!isSearchProduct) {
+          refetch()
+
+          return
+        }
+        setLoading(true)
+
+        return
+      }
+
+      setProductsIdFilter(filterProductsIdData?.data?.result)
+    }
+  }
+
+  const handleRefetch = () => {
+    setPage(PAGE_DEFAULT)
   }
 
   const handleNextPage = () => {
@@ -49,6 +122,10 @@ export const App: React.FC = () => {
     }
   }
 
+  const isDisabledNextPage = Boolean(
+    isSearchProduct && page >= productsIdFilter.length / DEFAULT_LIMIT_AND_OFFSET
+  )
+
   useEffect(() => {
     if (errorProductsId && 'status' in errorProductsId && errorProductsId?.status) {
       setLoading(false)
@@ -60,18 +137,35 @@ export const App: React.FC = () => {
       console.error('Ошибка при загрузке товаров:', errorProducts?.data)
       fetchProductsData()
     }
-  }, [errorProductsId, errorProducts])
+    if (errorFilterProducts && 'status' in errorFilterProducts && errorFilterProducts?.status) {
+      setLoading(false)
+      console.error('Ошибка при загрузке отфильтрованного товара:', errorFilterProducts?.data)
+      fetchProductsData()
+    }
+  }, [errorProductsId, errorProducts, errorFilterProducts])
+
+  useEffect(() => {
+    if (isSearchProduct && page > PAGE_DEFAULT && productsIdFilter) {
+      fetchProductsData()
+    }
+  }, [page])
 
   useEffect(() => {
     fetchProductsData()
-  }, [productsIdResult])
+  }, [productsIdResult, productsIdFilter, isSearchProduct])
 
   return (
     <div className={styles.wrapper}>
       <h1>Список товаров</h1>
+      <FiltersInputs
+        handleSearch={handleSearch}
+        isLoading={loading || isLoading}
+        refetch={handleRefetch}
+        setIsSearchProduct={setIsSearchProduct}
+      />
       <ProductTable isLoading={loading || isLoading} products={products} />
       <Pagination
-        disabledNextPage={!products.length}
+        disabledNextPage={isDisabledNextPage}
         handleNextPage={handleNextPage}
         handlePrevPage={handlePrevPage}
         isLoading={loading || isLoading}

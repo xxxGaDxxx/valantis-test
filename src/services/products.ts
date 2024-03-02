@@ -19,6 +19,14 @@ export type ProductsIdResponseType = {
 const productsApi = baseApi.injectEndpoints({
   endpoints: builder => {
     return {
+      filterProducts: builder.mutation<{ result: string[] }, Record<string, number | string>>({
+        query: params => ({
+          body: { action: 'filter', params },
+          method: 'POST',
+          url: '/',
+        }),
+      }),
+
       getProducts: builder.mutation<{ result: ProductType[] }, string[]>({
         query: (ids: string[]) => ({
           body: { action: 'get_items', params: { ids } },
@@ -38,4 +46,5 @@ const productsApi = baseApi.injectEndpoints({
   },
 })
 
-export const { useGetProductsIdQuery, useGetProductsMutation } = productsApi
+export const { useFilterProductsMutation, useGetProductsIdQuery, useGetProductsMutation } =
+  productsApi
