@@ -5,7 +5,7 @@ import md5 from 'md5'
 import { timestamp } from '../utils/timestamp'
 
 const password = 'Valantis'
-const BASE_URL = 'http://api.valantis.store:40000/'
+const BASE_URL = 'https://api.valantis.store:41000/'
 
 export const customFetchBase = fetchBaseQuery({
   baseUrl: BASE_URL,
