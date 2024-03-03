@@ -28,7 +28,6 @@ export const App: React.FC = () => {
   const {
     data: productsIdResult,
     error: errorProductsId,
-    isLoading,
     refetch,
   } = useGetProductsIdQuery(
     {
@@ -71,8 +70,9 @@ export const App: React.FC = () => {
         setProducts(filterUniqueById(productsData.data.result))
       }
     }
-
-    setLoading(true)
+    if (productsIdResult && 'result' in productsIdResult && productsIdResult.result.length) {
+      setLoading(true)
+    }
   }
 
   const handleSearch = async (field: string, value: number | string) => {
@@ -167,16 +167,16 @@ export const App: React.FC = () => {
       <h1>Список товаров</h1>
       <FiltersInputs
         handleSearch={handleSearch}
-        isLoading={loading || isLoading}
+        isLoading={loading}
         refetch={handleRefetch}
         setIsSearchProduct={setIsSearchProduct}
       />
-      <ProductTable isLoading={loading || isLoading} products={products} />
+      <ProductTable isLoading={loading} products={products} />
       <Pagination
         disabledNextPage={isDisabledNextPage}
         handleNextPage={handleNextPage}
         handlePrevPage={handlePrevPage}
-        isLoading={loading || isLoading}
+        isLoading={loading}
         page={page}
       />
     </div>
